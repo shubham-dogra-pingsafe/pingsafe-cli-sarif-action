@@ -1,0 +1,47 @@
+name: PingSafe CLI Pull Request Scan for IAC
+
+on:
+  # Triggers the workflow when pull_request created on master/main branch
+  pull_request:
+    types: [ opened, reopened, synchronize ]
+    branches: [ master, main ]
+
+jobs:
+  pingsafe-cli:
+    runs-on: ubuntu-latest
+    permissions:
+      # required for all workflows
+      security-events: write
+    container:
+      image: pingsafe/cli:latest
+      options: --entrypoint ""
+
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.ref }}
+          fetch-depth: 0
+
+      - name: Configure git config
+        run: git config --global --add safe.directory $PWD
+
+      - name: Configure PingSafe-CLI
+        run: pingsafe-cli config --api-token ${{ secrets.PINGSAFE_TOKEN }}
+
+      - name: Run Iac Scanner
+        id: iac-scanner
+        run:  pingsafe-cli --output-format SARIF --output-file ./results.sarif scan iac -d $PWD
+
+      - name: Upload SARIF file
+        uses: github/codeql-action/upload-sarif@v2
+        with:
+          # Path to SARIF file relative to the root of the repository
+          sarif_file: results.sarif
+   
+      - name: Job summary - on failure
+        if: ${{ failure() && steps.iac-scanner.outcome == 'failure' }}
+        run: echo "❌ Issues Detected" >> $GITHUB_STEP_SUMMARY
+      
+      - name: Job summary - on success
+        if: steps.iac-scanner.outcome == 'success' 
+        run: echo "✅ No Issues Detected" >> $GITHUB_STEP_SUMMARY
