@@ -37,11 +37,3 @@ jobs:
         with:
           # Path to SARIF file relative to the root of the repository
           sarif_file: results.sarif
-   
-      - name: Job summary - on failure
-        if: ${{ failure() && steps.iac-scanner.outcome == 'failure' }}
-        run: echo "❌ Issues Detected" >> $GITHUB_STEP_SUMMARY
-      
-      - name: Job summary - on success
-        if: steps.iac-scanner.outcome == 'success' 
-        run: echo "✅ No Issues Detected" >> $GITHUB_STEP_SUMMARY
